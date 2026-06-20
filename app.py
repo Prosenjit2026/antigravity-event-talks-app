@@ -1,9 +1,15 @@
 import os
 import re
 import html
+import time
 import requests
 import xml.etree.ElementTree as ET
 from flask import Flask, render_template, jsonify, request
+
+# Cache Configurations
+FEED_CACHE = None
+FEED_CACHE_TIME = 0
+CACHE_DURATION = 600  # 10 minutes (600 seconds)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, 
@@ -57,6 +63,20 @@ def index():
 
 @app.route('/api/releases')
 def get_releases():
+    global FEED_CACHE, FEED_CACHE_TIME
+    
+    # Read the cache control flag
+    force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+    
+    current_time = time.time()
+    if FEED_CACHE and not force_refresh and (current_time - FEED_CACHE_TIME < CACHE_DURATION):
+        return jsonify({
+            "status": "success",
+            "releases": FEED_CACHE,
+            "cached": True,
+            "cache_age_seconds": round(current_time - FEED_CACHE_TIME)
+        })
+        
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -102,9 +122,13 @@ def get_releases():
                 "updates": updates
             })
             
+        FEED_CACHE = entries
+        FEED_CACHE_TIME = current_time
+        
         return jsonify({
             "status": "success",
-            "releases": entries
+            "releases": entries,
+            "cached": False
         })
         
     except Exception as e:

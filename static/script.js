@@ -72,7 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchReleases(isManual = false) {
         try {
             setLoadingState(true);
-            const response = await fetch('/api/releases');
+            const url = '/api/releases' + (isManual ? '?refresh=true' : '');
+            const response = await fetch(url);
             if (!response.ok) throw new Error('Network response was not ok');
             
             const data = await response.json();
@@ -95,14 +96,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isLoading) {
             elements.spinnerIcon.classList.add('spinning');
             elements.refreshBtn.disabled = true;
-            if (state.releases.length === 0) {
-                elements.notesContainer.innerHTML = `
-                    <div class="loading-state">
-                        <div class="spinner"></div>
-                        <p>Loading latest release notes from Google Cloud...</p>
+            
+            // Build elegant skeleton card rows
+            let skeletonHtml = '';
+            for (let i = 0; i < 3; i++) {
+                skeletonHtml += `
+                    <div class="skeleton-card">
+                        <div class="skeleton-header skeleton-shimmer">
+                            <div class="skeleton-text title"></div>
+                        </div>
+                        <div class="skeleton-body">
+                            <div class="skeleton-block">
+                                <div class="skeleton-text badge skeleton-shimmer"></div>
+                                <div class="skeleton-text long skeleton-shimmer"></div>
+                                <div class="skeleton-text medium skeleton-shimmer"></div>
+                                <div class="skeleton-text short skeleton-shimmer"></div>
+                            </div>
+                        </div>
                     </div>
                 `;
             }
+            elements.notesContainer.innerHTML = skeletonHtml;
         } else {
             elements.spinnerIcon.classList.remove('spinning');
             elements.refreshBtn.disabled = false;
